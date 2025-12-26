@@ -34,7 +34,9 @@ class _MusicHomePageState extends State<MusicHomePage> {
     super.initState();
     _setupAudioPlayer();
     _loadSongsFromDeezer();
-    FavoritesManager.loadFavorites();
+
+    FavoritesManager.loadFromServer();
+
   }
 
   void _setupAudioPlayer() {

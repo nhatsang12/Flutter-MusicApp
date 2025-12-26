@@ -1,106 +1,97 @@
 // lib/services/auth_service.dart
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 
 class AuthService {
   static const String _userKey = 'current_user';
-  static const String _usersKey = 'registered_users';
   static User? _currentUser;
 
-  // Load current user
+  // Server base URL
+  static const String baseUrl = "http://10.0.2.2:3000/api/auth";
+  // Nếu chạy iOS Simulator hoặc Web, đổi localhost tương ứng
+
+  // Load current user from SharedPreferences
   static Future<void> loadCurrentUser() async {
     final prefs = await SharedPreferences.getInstance();
     final String? userJson = prefs.getString(_userKey);
-
     if (userJson != null) {
-      _currentUser = User.fromJson(json.decode(userJson));
+      _currentUser = User.fromJson(jsonDecode(userJson));
     }
   }
 
-  // Get current user
-  static User? getCurrentUser() {
-    return _currentUser;
-  }
+  static User? getCurrentUser() => _currentUser;
 
-  // Check if logged in
-  static bool isLoggedIn() {
-    return _currentUser != null;
-  }
+  static bool isLoggedIn() => _currentUser != null;
 
-  // Register new user
-  static Future<bool> register(String email, String password, String name) async {
-    final prefs = await SharedPreferences.getInstance();
+  // ----------------- REGISTER -----------------
+  static Future<bool> register(String name, String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/register"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"name": name, "email": email, "password": password}),
+      );
 
-    // Get existing users
-    final String? usersJson = prefs.getString(_usersKey);
-    Map<String, dynamic> users = usersJson != null ? json.decode(usersJson) : {};
-
-    // Check if email already exists
-    if (users.containsKey(email)) {
-      return false; // Email already registered
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          // Lưu user local
+          _currentUser = User(id: DateTime.now().millisecondsSinceEpoch.toString(), name: name, email: email, createdAt: DateTime.now());
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_userKey, jsonEncode(_currentUser!.toJson()));
+          return true;
+        }
+        return false;
+      }
+      return false;
+    } catch (e) {
+      print("Register error: $e");
+      return false;
     }
-
-    // Create new user
-    final user = User(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      email: email,
-      name: name,
-      createdAt: DateTime.now(),
-    );
-
-    // Save user with password
-    users[email] = {
-      'password': password,
-      'user': user.toJson(),
-    };
-
-    await prefs.setString(_usersKey, json.encode(users));
-
-    // Auto login after registration
-    _currentUser = user;
-    await prefs.setString(_userKey, json.encode(user.toJson()));
-
-    return true;
   }
 
-  // Login
+  // ----------------- LOGIN -----------------
   static Future<bool> login(String email, String password) async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? usersJson = prefs.getString(_usersKey);
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email, "password": password}),
+      );
 
-    if (usersJson == null) return false;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['user'] != null) {
+          _currentUser = User.fromJson(data['user']);
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_userKey, jsonEncode(_currentUser!.toJson()));
+          print("Response login: ${response.body}");
+          return true;
 
-    Map<String, dynamic> users = json.decode(usersJson);
-
-    if (!users.containsKey(email)) {
-      return false; // Email not found
+        }
+        return false;
+      }
+      return false;
+    } catch (e) {
+      print("Login error: $e");
+      return false;
     }
-
-    final userData = users[email];
-    if (userData['password'] != password) {
-      return false; // Wrong password
-    }
-
-    // Login successful
-    _currentUser = User.fromJson(userData['user']);
-    await prefs.setString(_userKey, json.encode(_currentUser!.toJson()));
-
-    return true;
   }
 
-  // Logout
+  // ----------------- LOGOUT -----------------
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userKey);
     _currentUser = null;
   }
 
-  // Update user profile
-  static Future<void> updateProfile(String name, String? avatarUrl) async {
+  // ----------------- UPDATE PROFILE -----------------
+  static Future<void> updateProfile(String name, {String? avatarUrl}) async {
     if (_currentUser == null) return;
 
-    final updatedUser = User(
+    _currentUser = User(
       id: _currentUser!.id,
       email: _currentUser!.email,
       name: name,
@@ -108,19 +99,7 @@ class AuthService {
       createdAt: _currentUser!.createdAt,
     );
 
-    _currentUser = updatedUser;
-
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userKey, json.encode(updatedUser.toJson()));
-
-    // Update in users list
-    final String? usersJson = prefs.getString(_usersKey);
-    if (usersJson != null) {
-      Map<String, dynamic> users = json.decode(usersJson);
-      if (users.containsKey(_currentUser!.email)) {
-        users[_currentUser!.email]['user'] = updatedUser.toJson();
-        await prefs.setString(_usersKey, json.encode(users));
-      }
-    }
+    await prefs.setString(_userKey, jsonEncode(_currentUser!.toJson()));
   }
 }

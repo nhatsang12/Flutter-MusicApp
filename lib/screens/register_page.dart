@@ -39,10 +39,11 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
 
     setState(() => _isLoading = true);
 
+    // Chú ý: thứ tự param: name, email, password
     final success = await AuthService.register(
+      _nameController.text.trim(),
       _emailController.text.trim(),
       _passwordController.text,
-      _nameController.text.trim(),
     );
 
     setState(() => _isLoading = false);
@@ -59,7 +60,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
             children: [
               Icon(Icons.error_outline, color: Colors.white),
               SizedBox(width: 12),
-              Expanded(child: Text('Email đã được sử dụng')),
+              Expanded(child: Text('Email đã được sử dụng hoặc có lỗi server')),
             ],
           ),
           backgroundColor: Colors.red.shade700,
@@ -69,6 +70,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

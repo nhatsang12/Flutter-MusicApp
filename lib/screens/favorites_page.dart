@@ -16,10 +16,17 @@ class _FavoritesPageState extends State<FavoritesPage> {
   List<Song> _favorites = [];
 
   @override
+  @override
   void initState() {
     super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await FavoritesManager.initFavorites();
     _loadFavorites();
   }
+
 
   void _loadFavorites() {
     setState(() {
@@ -28,16 +35,26 @@ class _FavoritesPageState extends State<FavoritesPage> {
   }
 
   void _removeFavorite(Song song) async {
-    await FavoritesManager.removeFavorite(song);
-    _loadFavorites();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đã xóa "${song.title}" khỏi yêu thích'),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    final success = await FavoritesManager.removeFavorite(song);
+
+    if (success) {
+      _loadFavorites();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã xóa "${song.title}" khỏi yêu thích'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi khi xóa yêu thích'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
+
 
   void _clearAll() async {
     final confirm = await showDialog<bool>(
