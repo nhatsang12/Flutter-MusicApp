@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../models/song.dart';
 
@@ -78,13 +77,24 @@ class MusicPlayer extends StatelessWidget {
           SizedBox(height: 8),
           Text(currentSong.artist, style: TextStyle(fontSize: 16, color: Colors.white70)),
           SizedBox(height: 30),
-          Slider(
-            value: position.inSeconds.toDouble(),
-            max: duration.inSeconds > 0 ? duration.inSeconds.toDouble() : 1.0,
-            onChanged: onSeek,
-            activeColor: Colors.white,
-            inactiveColor: Colors.white30,
+
+          // Slider an toàn (Fix lỗi crash)
+          Builder(
+              builder: (context) {
+                final double maxVal = duration.inSeconds > 0 ? duration.inSeconds.toDouble() : 1.0;
+                double currentVal = position.inSeconds.toDouble();
+                if (currentVal > maxVal) currentVal = maxVal;
+
+                return Slider(
+                  value: currentVal,
+                  max: maxVal,
+                  onChanged: onSeek,
+                  activeColor: Colors.white,
+                  inactiveColor: Colors.white30,
+                );
+              }
           ),
+
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -113,7 +123,13 @@ class MusicPlayer extends StatelessWidget {
                 ),
               ),
               IconButton(icon: Icon(Icons.skip_next), color: Colors.white, iconSize: 40, onPressed: onNext),
-              IconButton(icon: Icon(Icons.repeat), color: isRepeat ? Colors.greenAccent : Colors.white70, iconSize: 28, onPressed: onRepeat),
+              // Icon thay đổi khi bật lặp lại
+              IconButton(
+                  icon: Icon(isRepeat ? Icons.repeat_one : Icons.repeat),
+                  color: isRepeat ? Colors.greenAccent : Colors.white70,
+                  iconSize: 28,
+                  onPressed: onRepeat
+              ),
             ],
           ),
         ],

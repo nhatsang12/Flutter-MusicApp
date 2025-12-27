@@ -1,5 +1,7 @@
 // lib/screens/login_page.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Import Provider
+import '../services/language_provider.dart'; // Import Language
 import '../services/auth_service.dart';
 import 'register_page.dart';
 import 'music_home_page.dart';
@@ -32,6 +34,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _login() async {
+    // Lấy ngôn ngữ để hiển thị thông báo lỗi
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -55,7 +60,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             children: [
               Icon(Icons.error_outline, color: Colors.white),
               SizedBox(width: 12),
-              Expanded(child: Text('Email hoặc mật khẩu không đúng')),
+              Expanded(child: Text(lang.getText('login_failed'))), // "Email hoặc mật khẩu không đúng"
             ],
           ),
           backgroundColor: Colors.red.shade700,
@@ -68,6 +73,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    // Lắng nghe thay đổi ngôn ngữ để vẽ lại giao diện
+    final lang = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -92,7 +100,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo với hiệu ứng sóng nhạc
+                      // Logo
                       Container(
                         padding: EdgeInsets.all(24),
                         decoration: BoxDecoration(
@@ -122,7 +130,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           colors: [Colors.purple.shade300, Colors.pink.shade300],
                         ).createShader(bounds),
                         child: Text(
-                          'Music Player',
+                          lang.getText('app_name'), // "Music Player"
                           style: TextStyle(
                             fontSize: 40,
                             fontWeight: FontWeight.bold,
@@ -133,7 +141,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Âm nhạc là cuộc sống',
+                        lang.getText('login_subtitle'), // "Âm nhạc là cuộc sống"
                         style: TextStyle(
                           color: Colors.white60,
                           fontSize: 16,
@@ -158,7 +166,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           controller: _emailController,
                           style: TextStyle(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
-                            labelText: 'Email',
+                            labelText: lang.getText('email'), // "Email"
                             labelStyle: TextStyle(color: Colors.white60),
                             prefixIcon: Icon(Icons.email_outlined, color: Colors.purple.shade300),
                             filled: true,
@@ -178,10 +186,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Vui lòng nhập email';
+                              return lang.getText('enter_email');
                             }
                             if (!value.contains('@')) {
-                              return 'Email không hợp lệ';
+                              return lang.getText('email_invalid');
                             }
                             return null;
                           },
@@ -206,7 +214,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           obscureText: _obscurePassword,
                           style: TextStyle(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
-                            labelText: 'Mật khẩu',
+                            labelText: lang.getText('password'), // "Mật khẩu"
                             labelStyle: TextStyle(color: Colors.white60),
                             prefixIcon: Icon(Icons.lock_outline, color: Colors.purple.shade300),
                             suffixIcon: IconButton(
@@ -235,7 +243,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Vui lòng nhập mật khẩu';
+                              return lang.getText('enter_password');
                             }
                             return null;
                           },
@@ -248,11 +256,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                         child: TextButton(
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Tính năng đang phát triển')),
+                              SnackBar(content: Text(lang.getText('feature_dev'))),
                             );
                           },
                           child: Text(
-                            'Quên mật khẩu?',
+                            lang.getText('forgot_pass'), // "Quên mật khẩu?"
                             style: TextStyle(color: Colors.purple.shade300),
                           ),
                         ),
@@ -298,7 +306,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Đăng nhập',
+                                lang.getText('login_btn'), // "Đăng nhập"
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -321,7 +329,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
-                              'HOẶC',
+                              lang.getText('or'), // "HOẶC"
                               style: TextStyle(color: Colors.white38, fontSize: 12),
                             ),
                           ),
@@ -351,7 +359,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               Icon(Icons.person_add_outlined, color: Colors.purple.shade300),
                               SizedBox(width: 8),
                               Text(
-                                'Tạo tài khoản mới',
+                                lang.getText('create_new_account'), // "Tạo tài khoản mới"
                                 style: TextStyle(
                                   color: Colors.purple.shade300,
                                   fontSize: 16,

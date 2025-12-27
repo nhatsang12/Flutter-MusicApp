@@ -1,7 +1,9 @@
 // lib/screens/favorites_page.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Import Provider
 import '../models/song.dart';
 import '../services/favorites_manager.dart';
+import '../services/language_provider.dart'; // Import LanguageProvider
 
 class FavoritesPage extends StatefulWidget {
   final Function(Song, int) onSongTap;
@@ -35,6 +37,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
   }
 
   void _removeFavorite(Song song) async {
+<<<<<<< HEAD
     final success = await FavoritesManager.removeFavorite(song);
 
     if (success) {
@@ -53,27 +56,45 @@ class _FavoritesPageState extends State<FavoritesPage> {
         ),
       );
     }
+=======
+    // Lấy ngôn ngữ để hiển thị thông báo
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+
+    await FavoritesManager.removeFavorite(song);
+    _loadFavorites();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${lang.getText('removed_favorite')}: "${song.title}"'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 2),
+      ),
+    );
+>>>>>>> Profile
   }
 
 
   void _clearAll() async {
+    // Lấy ngôn ngữ để hiển thị dialog
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Color(0xFF1E1E1E),
-        title: Text('Xóa tất cả?', style: TextStyle(color: Colors.white)),
+        title: Text(lang.getText('delete_all'), style: TextStyle(color: Colors.white)), // "Xóa tất cả?"
         content: Text(
-          'Bạn có chắc muốn xóa tất cả bài hát yêu thích?',
+          lang.getText('delete_all_confirm'), // "Bạn có chắc...?"
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Hủy'),
+            child: Text(lang.getText('cancel')), // "Hủy"
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Xóa', style: TextStyle(color: Colors.red)),
+            child: Text(lang.getText('delete'), style: TextStyle(color: Colors.red)), // "Xóa"
           ),
         ],
       ),
@@ -83,22 +104,25 @@ class _FavoritesPageState extends State<FavoritesPage> {
       await FavoritesManager.clearFavorites();
       _loadFavorites();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã xóa tất cả yêu thích')),
+        SnackBar(content: Text(lang.getText('deleted_all_favorites'))), // "Đã xóa tất cả..."
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Lắng nghe thay đổi ngôn ngữ
+    final lang = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Yêu thích (${_favorites.length})'),
+        title: Text('${lang.getText('favorites_title')} (${_favorites.length})'), // "Yêu thích (n)"
         actions: [
           if (_favorites.isNotEmpty)
             IconButton(
               icon: Icon(Icons.delete_sweep),
               onPressed: _clearAll,
-              tooltip: 'Xóa tất cả',
+              tooltip: lang.getText('delete_all'), // "Xóa tất cả"
             ),
         ],
       ),
@@ -109,9 +133,11 @@ class _FavoritesPageState extends State<FavoritesPage> {
           children: [
             Icon(Icons.favorite_border, size: 100, color: Colors.white24),
             SizedBox(height: 20),
-            Text('Chưa có bài hát yêu thích', style: TextStyle(fontSize: 18, color: Colors.white54)),
+            Text(lang.getText('empty_favorites'), // "Chưa có bài hát..."
+                style: TextStyle(fontSize: 18, color: Colors.white54)),
             SizedBox(height: 10),
-            Text('Nhấn icon ♥ để thêm bài hát', style: TextStyle(fontSize: 14, color: Colors.white38)),
+            Text(lang.getText('add_favorite_hint'), // "Nhấn icon ♥..."
+                style: TextStyle(fontSize: 14, color: Colors.white38)),
           ],
         ),
       )
@@ -152,12 +178,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
                     ),
                   ),
                 ),
-                title: Text(song.title, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                subtitle: Text(song.artist, style: TextStyle(color: Colors.white70, fontSize: 13)),
+                title: Text(song.title,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                subtitle: Text(song.artist,
+                    style: TextStyle(color: Colors.white70, fontSize: 13)),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(song.duration, style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    Text(song.duration,
+                        style: TextStyle(color: Colors.white54, fontSize: 12)),
                     SizedBox(width: 8),
                     IconButton(
                       icon: Icon(Icons.favorite, color: Colors.red),

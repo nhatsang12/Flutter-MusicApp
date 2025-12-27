@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 
+
 class AuthService {
   static const String _userKey = 'current_user';
   static User? _currentUser;
@@ -102,4 +103,75 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userKey, jsonEncode(_currentUser!.toJson()));
   }
+<<<<<<< HEAD
 }
+=======
+
+  // Thêm vào lib/services/auth_service.dart
+
+  // Hàm cập nhật thống kê nghe nhạc
+  static Future<void> addListeningStats(int seconds) async {
+    if (_currentUser == null) return;
+
+    // 1. Tạo user mới với thông số đã cộng thêm
+    final updatedUser = User(
+      id: _currentUser!.id,
+      email: _currentUser!.email,
+      name: _currentUser!.name,
+      avatarUrl: _currentUser!.avatarUrl,
+      createdAt: _currentUser!.createdAt,
+      songsPlayed: _currentUser!.songsPlayed + 1, // Cộng thêm 1 bài
+      totalListenTime: _currentUser!.totalListenTime + seconds, // Cộng thêm thời gian
+    );
+
+    // 2. Cập nhật vào biến cục bộ
+    _currentUser = updatedUser;
+
+    // 3. Lưu vào SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+
+    // Lưu user hiện tại
+    await prefs.setString(_userKey, json.encode(updatedUser.toJson()));
+
+    // Lưu vào danh sách tổng (để không bị mất khi logout)
+    final String? usersJson = prefs.getString(_usersKey);
+    if (usersJson != null) {
+      Map<String, dynamic> users = json.decode(usersJson);
+      if (users.containsKey(updatedUser.email)) {
+        users[updatedUser.email]['user'] = updatedUser.toJson();
+        await prefs.setString(_usersKey, json.encode(users));
+      }
+    }
+  }
+
+  // --- MỚI THÊM: ĐỔI MẬT KHẨU ---
+  static Future<bool> changePassword(String currentPassword, String newPassword) async {
+    // 1. Kiểm tra user có đăng nhập không
+    if (_currentUser == null) return false;
+
+    final prefs = await SharedPreferences.getInstance();
+    final String? usersJson = prefs.getString(_usersKey);
+
+    // 2. Lấy danh sách user từ bộ nhớ
+    if (usersJson == null) return false;
+    Map<String, dynamic> users = json.decode(usersJson);
+    final email = _currentUser!.email;
+
+    // 3. Kiểm tra user có tồn tại trong dữ liệu gốc không
+    if (!users.containsKey(email)) return false;
+
+    // 4. Kiểm tra mật khẩu cũ
+    if (users[email]['password'] != currentPassword) {
+      return false; // Mật khẩu cũ sai
+    }
+
+    // 5. Cập nhật mật khẩu mới
+    users[email]['password'] = newPassword;
+
+    // 6. Lưu lại vào SharedPreferences
+    await prefs.setString(_usersKey, json.encode(users));
+
+    return true; // Thành công
+  }
+}
+>>>>>>> Profile
