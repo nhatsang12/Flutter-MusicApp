@@ -1,15 +1,26 @@
 // lib/screens/music_home_page.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'dart:math';
 import '../models/song.dart';
 import '../services/music_api_service.dart';
 import '../services/favorites_manager.dart';
+import '../services/auth_service.dart';
+import '../services/playlist_manager.dart';
+import '../services/action_service.dart';
+import '../services/audio_manager.dart';
+import '../widgets/add_playlist_sheet.dart';
 import 'favorites_page.dart';
 import 'library_page.dart';
 import 'profile_page.dart';
 import '../widgets/music_player.dart';
 import '../widgets/playlist_view.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/mini_player.dart';
+import 'package:provider/provider.dart';
+import '../services/language_provider.dart';
+import '../services/theme_provider.dart'; // <--- IMPORT THEME
 
 class MusicHomePage extends StatefulWidget {
   @override
@@ -17,276 +28,294 @@ class MusicHomePage extends StatefulWidget {
 }
 
 class _MusicHomePageState extends State<MusicHomePage> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  List<Song> _playlist = [];
-  Song? _currentSong;
-  bool _isPlaying = false;
-  Duration _duration = Duration.zero;
-  Duration _position = Duration.zero;
-  int _currentIndex = -1;
+  final AudioManager _audioManager = AudioManager();
+
+  List<Song> _displaySongs = [];
   bool _isLoading = false;
-  bool _isRepeat = false;
-  bool _isShuffle = false;
   int _selectedNavIndex = 0;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _setupAudioPlayer();
     _loadSongsFromDeezer();
     FavoritesManager.loadFavorites();
-  }
-
-  void _setupAudioPlayer() {
-    _audioPlayer.onDurationChanged.listen((duration) {
-      setState(() => _duration = duration);
-    });
-
-    _audioPlayer.onPositionChanged.listen((position) {
-      setState(() => _position = position);
-    });
-
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      setState(() => _isPlaying = state == PlayerState.playing);
-    });
-
-    _audioPlayer.onPlayerComplete.listen((event) {
-      _onSongComplete();
-    });
+    PlaylistManager.loadPlaylists();
   }
 
   Future<void> _loadSongsFromDeezer() async {
     setState(() => _isLoading = true);
-
     try {
       List<Song> songs = await MusicApiService.fetchFromDeezer(limit: 30);
       setState(() {
-        _playlist = songs;
+        _displaySongs = songs;
       });
-
-      if (songs.isNotEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Expanded(child: Text('Đã tải ${songs.length} bài hát từ Deezer')),
-              ],
-            ),
-            backgroundColor: Colors.green.shade700,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.white),
-                SizedBox(width: 12),
-                Expanded(child: Text('Lỗi tải nhạc: $e')),
-              ],
-            ),
-            backgroundColor: Colors.red.shade700,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            duration: Duration(seconds: 3),
-          ),
-        );
+        final lang = Provider.of<LanguageProvider>(context, listen: false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${lang.getText('load_error')}: $e')));
       }
-      // Fallback to sample songs if API fails
       setState(() {
-        _playlist = MusicApiService.getSampleSongs();
+        _displaySongs = MusicApiService.getSampleSongs();
       });
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _playSong(Song song, int index) async {
+  Future<void> _performSearch(String query) async {
+    if (query.isEmpty) return;
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+
+    setState(() => _isLoading = true);
+    FocusScope.of(context).unfocus();
     try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(UrlSource(song.url));
+      List<Song> results = await MusicApiService.searchSongs(query);
       setState(() {
-        _currentSong = song;
-        _currentIndex = index;
-        _isPlaying = true;
+        _displaySongs = results;
       });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Không thể phát bài hát: $e'),
-            backgroundColor: Colors.red.shade700,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
+      if (results.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang.getText('search_empty'))));
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${lang.getText('search_error')}: $e')));
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-  void _togglePlayPause() async {
-    if (_isPlaying) {
-      await _audioPlayer.pause();
-    } else {
-      await _audioPlayer.resume();
-    }
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        _loadSongsFromDeezer();
+      }
+    });
   }
 
-  void _playNext() {
-    if (_playlist.isEmpty) return;
-    int nextIndex;
-    if (_isShuffle) {
-      nextIndex = DateTime.now().millisecond % _playlist.length;
-    } else {
-      nextIndex = (_currentIndex + 1) % _playlist.length;
-    }
-    _playSong(_playlist[nextIndex], nextIndex);
+  void _playSong(Song song, int index, {List<Song>? contextPlaylist}) {
+    final playlistToPlay = contextPlaylist ?? _displaySongs;
+    _audioManager.play(song, playlistToPlay);
   }
 
-  void _playPrevious() {
-    if (_playlist.isEmpty) return;
-    int prevIndex = (_currentIndex - 1 + _playlist.length) % _playlist.length;
-    _playSong(_playlist[prevIndex], prevIndex);
+  void _openFullScreenPlayer() {
+    if (_audioManager.currentSong == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StreamBuilder<void>(
+            stream: _audioManager.uiStream.stream,
+            builder: (context, snapshot) {
+              if (_audioManager.currentSong == null) return SizedBox();
+
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.95,
+                child: MusicPlayer(
+                  currentSong: _audioManager.currentSong!,
+                  isPlaying: _audioManager.isPlaying,
+                  position: _audioManager.position,
+                  duration: _audioManager.duration,
+                  isRepeat: _audioManager.isRepeat,
+                  isShuffle: _audioManager.isShuffle,
+                  onPlayPause: _audioManager.togglePlayPause,
+                  onNext: _audioManager.next,
+                  onPrevious: _audioManager.previous,
+                  onRepeat: _audioManager.toggleRepeat,
+                  onShuffle: _audioManager.toggleShuffle,
+                  onSeek: (val) => _audioManager.seek(Duration(seconds: val.toInt())),
+                ),
+              );
+            }
+        );
+      },
+    );
   }
 
-  void _onSongComplete() {
-    if (_isRepeat) {
-      _audioPlayer.seek(Duration.zero);
-      _audioPlayer.resume();
-    } else {
-      _playNext();
-    }
+  void _showSongOptions(Song song) {
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+    // Lấy Theme để chỉnh màu BottomSheet
+    final theme = Provider.of<ThemeProvider>(context, listen: false);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: theme.isDarkMode ? Color(0xFF1E1E2C) : Colors.white, // Nền đổi màu
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 20),
+            ListTile(
+              leading: Icon(Icons.favorite, color: Colors.redAccent),
+              title: Text(lang.getText('add_to_fav'), style: TextStyle(color: theme.textPrimary)), // Chữ đổi màu
+              onTap: () {
+                FavoritesManager.toggleFavorite(song);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(lang.getText('success'))));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.playlist_add, color: Colors.blueAccent),
+              title: Text(lang.getText('add_to_playlist'), style: TextStyle(color: theme.textPrimary)), // Chữ đổi màu
+              onTap: () {
+                Navigator.pop(context);
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => Container(height: 400, child: AddPlaylistSheet(song: song)),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.download, color: Colors.greenAccent),
+              title: Text(lang.getText('download'), style: TextStyle(color: theme.textPrimary)), // Chữ đổi màu
+              onTap: () {
+                Navigator.pop(context);
+                ActionService.downloadSong(context, song);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.share, color: Colors.purpleAccent),
+              title: Text(lang.getText('share'), style: TextStyle(color: theme.textPrimary)), // Chữ đổi màu
+              onTap: () {
+                Navigator.pop(context);
+                ActionService.shareSong(song);
+              },
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _seek(double value) {
-    final position = Duration(seconds: value.toInt());
-    _audioPlayer.seek(position);
-  }
-
-  // BUILD HOME PAGE CONTENT
-  Widget _buildHomePage() {
+  Widget _buildHomePage(LanguageProvider lang, ThemeProvider theme) {
     return Column(
       children: [
-        if (_currentSong != null)
-          MusicPlayer(
-            currentSong: _currentSong!,
-            isPlaying: _isPlaying,
-            position: _position,
-            duration: _duration,
-            isRepeat: _isRepeat,
-            isShuffle: _isShuffle,
-            onPlayPause: _togglePlayPause,
-            onNext: _playNext,
-            onPrevious: _playPrevious,
-            onRepeat: () => setState(() => _isRepeat = !_isRepeat),
-            onShuffle: () => setState(() => _isShuffle = !_isShuffle),
-            onSeek: _seek,
-          ),
         Expanded(
           child: _isLoading
-              ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  color: Colors.purple.shade300,
-                  strokeWidth: 3,
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Đang tải nhạc từ Deezer...',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          )
+              ? Center(child: CircularProgressIndicator())
+              : _displaySongs.isEmpty
+              ? Center(child: Text(lang.getText('no_result'), style: TextStyle(color: theme.textSecondary))) // Chữ đổi màu
               : PlaylistView(
-            playlist: _playlist,
-            currentIndex: _currentIndex,
-            onSongTap: _playSong,
+            playlist: _displaySongs,
+            currentIndex: _displaySongs.indexWhere((s) => s.id == _audioManager.currentSong?.id),
+            onSongTap: (song, index) => _playSong(song, index),
+            onOptionTap: _showSongOptions,
           ),
         ),
       ],
     );
   }
 
-  // GET CURRENT PAGE BASED ON INDEX
-  Widget _getCurrentPage() {
+  Widget _getCurrentPage(LanguageProvider lang, ThemeProvider theme) {
     switch (_selectedNavIndex) {
-      case 0:
-        return _buildHomePage();
-      case 1:
-        return LibraryPage(onSongTap: _playSong);
-      case 2:
-        return FavoritesPage(onSongTap: _playSong);
-      case 3:
-        return ProfilePage();
-      default:
-        return _buildHomePage();
+      case 0: return _buildHomePage(lang, theme);
+      case 1: return LibraryPage(onSongTap: (song, index, playlist) {
+        _playSong(song, index, contextPlaylist: playlist);
+      });
+      case 2: return FavoritesPage(onSongTap: (song, index) {
+        _playSong(song, index, contextPlaylist: FavoritesManager.getFavorites());
+      });
+      case 3: return ProfilePage();
+      default: return _buildHomePage(lang, theme);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context);
+    // Lấy Theme
+    final theme = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
       appBar: _selectedNavIndex == 0
           ? AppBar(
-        title: Row(
-          children: [
-            Icon(Icons.music_note, color: Colors.purple.shade300),
-            SizedBox(width: 8),
-            Text('Music Player'),
-          ],
-        ),
-        actions: [
-          // Search button
-          IconButton(
-            icon: Icon(Icons.search),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('🔍 Tính năng tìm kiếm đang phát triển'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
-            },
-            tooltip: 'Tìm kiếm',
+        // Màu icon trên AppBar đổi theo Theme
+        iconTheme: IconThemeData(color: theme.textPrimary),
+        title: _isSearching
+            ? TextField(
+          controller: _searchController,
+          // Màu chữ nhập vào đổi theo Theme
+          style: TextStyle(color: theme.textPrimary),
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: lang.getText('search_hint'),
+            // Màu chữ gợi ý đổi theo Theme
+            hintStyle: TextStyle(color: theme.textSecondary),
+            border: InputBorder.none,
           ),
-          // Refresh button
+          onSubmitted: _performSearch,
+        )
+            : Text(lang.getText('app_name'), style: TextStyle(color: theme.textPrimary, fontWeight: FontWeight.bold)),
+        actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _loadSongsFromDeezer,
-            tooltip: 'Làm mới danh sách',
+              icon: Icon(_isSearching ? Icons.close : Icons.search, color: theme.iconColor),
+              onPressed: _toggleSearch
+          ),
+          if (!_isSearching)
+            IconButton(
+                icon: Icon(Icons.refresh, color: theme.iconColor),
+                onPressed: _loadSongsFromDeezer
+            ),
+
+          StreamBuilder<void>(
+              stream: _audioManager.uiStream.stream,
+              builder: (context, snapshot) {
+                if (_audioManager.currentSong != null) {
+                  return IconButton(
+                      icon: Icon(Icons.more_vert, color: theme.iconColor),
+                      onPressed: () => _showSongOptions(_audioManager.currentSong!)
+                  );
+                }
+                return SizedBox();
+              }
           ),
         ],
       )
           : null,
-      body: _getCurrentPage(),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _selectedNavIndex,
-        onTap: (index) {
-          setState(() => _selectedNavIndex = index);
-        },
+      body: _getCurrentPage(lang, theme),
+
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          StreamBuilder<void>(
+              stream: _audioManager.uiStream.stream,
+              builder: (context, snapshot) {
+                if (_audioManager.currentSong != null) {
+                  return MiniPlayer(
+                    song: _audioManager.currentSong!,
+                    isPlaying: _audioManager.isPlaying,
+                    onPlayPause: _audioManager.togglePlayPause,
+                    onNext: _audioManager.next,
+                    onTap: _openFullScreenPlayer,
+                  );
+                }
+                return SizedBox.shrink();
+              }
+          ),
+
+          CustomBottomNavBar(
+            currentIndex: _selectedNavIndex,
+            onTap: (index) => setState(() => _selectedNavIndex = index),
+          ),
+        ],
       ),
     );
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 }

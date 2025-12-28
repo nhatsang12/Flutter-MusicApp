@@ -1,5 +1,7 @@
 // lib/screens/register_page.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Import Provider
+import '../services/language_provider.dart'; // Import Language
 import '../services/auth_service.dart';
 import 'login_page.dart';
 import 'music_home_page.dart';
@@ -35,6 +37,9 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
   }
 
   Future<void> _register() async {
+    // Lấy ngôn ngữ để hiển thị thông báo lỗi
+    final lang = Provider.of<LanguageProvider>(context, listen: false);
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -59,7 +64,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
             children: [
               Icon(Icons.error_outline, color: Colors.white),
               SizedBox(width: 12),
-              Expanded(child: Text('Email đã được sử dụng')),
+              Expanded(child: Text(lang.getText('email_taken'))), // "Email đã được sử dụng"
             ],
           ),
           backgroundColor: Colors.red.shade700,
@@ -72,6 +77,9 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    // Lắng nghe thay đổi ngôn ngữ
+    final lang = Provider.of<LanguageProvider>(context);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -124,7 +132,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                           colors: [Colors.pink.shade300, Colors.purple.shade300],
                         ).createShader(bounds),
                         child: Text(
-                          'Tạo Tài Khoản',
+                          lang.getText('register_title'), // "Tạo Tài Khoản"
                           style: TextStyle(
                             fontSize: 36,
                             fontWeight: FontWeight.bold,
@@ -135,7 +143,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Bắt đầu hành trình âm nhạc',
+                        lang.getText('register_subtitle'), // "Bắt đầu hành trình âm nhạc"
                         style: TextStyle(color: Colors.white60, fontSize: 15),
                       ),
                       SizedBox(height: 36),
@@ -143,11 +151,11 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                       // Name field
                       _buildTextField(
                         controller: _nameController,
-                        label: 'Họ và tên',
+                        label: lang.getText('full_name'), // "Họ và tên"
                         icon: Icons.person_outline,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Vui lòng nhập họ tên';
+                            return lang.getText('enter_name');
                           }
                           return null;
                         },
@@ -157,14 +165,14 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                       // Email field
                       _buildTextField(
                         controller: _emailController,
-                        label: 'Email',
+                        label: lang.getText('email'), // "Email"
                         icon: Icons.email_outlined,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Vui lòng nhập email';
+                            return lang.getText('enter_email');
                           }
                           if (!value.contains('@')) {
-                            return 'Email không hợp lệ';
+                            return lang.getText('email_invalid');
                           }
                           return null;
                         },
@@ -174,7 +182,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                       // Password field
                       _buildTextField(
                         controller: _passwordController,
-                        label: 'Mật khẩu',
+                        label: lang.getText('password'), // "Mật khẩu"
                         icon: Icons.lock_outline,
                         isPassword: true,
                         obscureText: _obscurePassword,
@@ -183,10 +191,10 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                         },
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Vui lòng nhập mật khẩu';
+                            return lang.getText('enter_password');
                           }
                           if (value.length < 6) {
-                            return 'Mật khẩu phải có ít nhất 6 ký tự';
+                            return lang.getText('password_min');
                           }
                           return null;
                         },
@@ -196,7 +204,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                       // Confirm password field
                       _buildTextField(
                         controller: _confirmPasswordController,
-                        label: 'Xác nhận mật khẩu',
+                        label: lang.getText('confirm_password'), // "Xác nhận mật khẩu"
                         icon: Icons.lock_outline,
                         isPassword: true,
                         obscureText: _obscureConfirmPassword,
@@ -205,7 +213,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                         },
                         validator: (value) {
                           if (value != _passwordController.text) {
-                            return 'Mật khẩu không khớp';
+                            return lang.getText('password_mismatch');
                           }
                           return null;
                         },
@@ -251,7 +259,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Đăng ký',
+                                lang.getText('register_btn'), // "Đăng ký"
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -272,7 +280,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Đã có tài khoản? ',
+                            lang.getText('have_account'), // "Đã có tài khoản? "
                             style: TextStyle(color: Colors.white60, fontSize: 15),
                           ),
                           TextButton(
@@ -287,7 +295,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                               }
                             },
                             child: Text(
-                              'Đăng nhập ngay',
+                              lang.getText('login_now'), // "Đăng nhập ngay"
                               style: TextStyle(
                                 color: Colors.pink.shade300,
                                 fontWeight: FontWeight.bold,
