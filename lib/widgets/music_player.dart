@@ -1,5 +1,8 @@
+// lib/widgets/music_player.dart
 import 'package:flutter/material.dart';
 import '../models/song.dart';
+import '../services/theme_provider.dart'; // Import Theme để lấy màu
+import 'package:provider/provider.dart';
 
 class MusicPlayer extends StatelessWidget {
   final Song currentSong;
@@ -31,107 +34,128 @@ class MusicPlayer extends StatelessWidget {
     required this.onSeek,
   }) : super(key: key);
 
-  String _formatDuration(Duration d) {
+  String _formatTime(Duration d) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
-    return '${twoDigits(d.inMinutes.remainder(60))}:${twoDigits(d.inSeconds.remainder(60))}';
+    return "${twoDigits(d.inMinutes)}:${twoDigits(d.inSeconds.remainder(60))}";
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Provider.of<ThemeProvider>(context); // Lấy theme
+
     return Container(
-      padding: EdgeInsets.all(20),
+      padding: EdgeInsets.symmetric(horizontal: 20),
+      // Nền Gradient nhẹ
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.purple.shade800, Colors.blue.shade900],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: theme.isDarkMode
+              ? [Color(0xFF1a1a2e), Color(0xFF0f3460)]
+              : [Colors.white, Colors.grey.shade200],
         ),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Nút kéo xuống để đóng
           Container(
-            width: 200,
-            height: 200,
+            width: 40, height: 4,
+            margin: EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(2)),
+          ),
+
+          // Ảnh bìa
+          Container(
+            height: 300,
+            width: 300,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 10))],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.network(
-                currentSong.coverUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: Colors.grey[800],
-                  child: Icon(Icons.music_note, size: 100, color: Colors.white54),
-                ),
-              ),
+              boxShadow: [BoxShadow(color: Colors.black45, blurRadius: 20, offset: Offset(0, 10))],
+              image: DecorationImage(image: NetworkImage(currentSong.coverUrl), fit: BoxFit.cover),
             ),
           ),
           SizedBox(height: 30),
-          Text(currentSong.title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white), textAlign: TextAlign.center, maxLines: 2),
+
+          // Tên bài hát
+          Text(
+            currentSong.title,
+            style: TextStyle(color: theme.textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
           SizedBox(height: 8),
-          Text(currentSong.artist, style: TextStyle(fontSize: 16, color: Colors.white70)),
+          Text(
+            currentSong.artist,
+            style: TextStyle(color: theme.textSecondary, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
           SizedBox(height: 30),
 
-          // Slider an toàn (Fix lỗi crash)
-          Builder(
-              builder: (context) {
-                final double maxVal = duration.inSeconds > 0 ? duration.inSeconds.toDouble() : 1.0;
-                double currentVal = position.inSeconds.toDouble();
-                if (currentVal > maxVal) currentVal = maxVal;
-
-                return Slider(
-                  value: currentVal,
-                  max: maxVal,
-                  onChanged: onSeek,
-                  activeColor: Colors.white,
-                  inactiveColor: Colors.white30,
-                );
-              }
+          // Thanh trượt thời gian
+          Slider(
+            activeColor: Colors.purpleAccent,
+            inactiveColor: Colors.grey.withOpacity(0.3),
+            min: 0,
+            max: duration.inSeconds.toDouble(),
+            value: position.inSeconds.toDouble().clamp(0, duration.inSeconds.toDouble()),
+            onChanged: onSeek,
           ),
-
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_formatDuration(position), style: TextStyle(color: Colors.white70)),
-                Text(_formatDuration(duration), style: TextStyle(color: Colors.white70)),
+                Text(_formatTime(position), style: TextStyle(color: theme.textSecondary)),
+                Text(_formatTime(duration), style: TextStyle(color: theme.textSecondary)),
               ],
             ),
           ),
           SizedBox(height: 20),
+
+          // Các nút điều khiển
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              IconButton(icon: Icon(Icons.shuffle), color: isShuffle ? Colors.greenAccent : Colors.white70, iconSize: 28, onPressed: onShuffle),
-              IconButton(icon: Icon(Icons.skip_previous), color: Colors.white, iconSize: 40, onPressed: onPrevious),
+              // Nút Shuffle (Đổi màu khi bật)
+              IconButton(
+                icon: Icon(Icons.shuffle, size: 28),
+                color: isShuffle ? Colors.purpleAccent : theme.iconColor,
+                onPressed: onShuffle,
+              ),
+
+              // Previous
+              IconButton(
+                icon: Icon(Icons.skip_previous, size: 36),
+                color: theme.textPrimary,
+                onPressed: onPrevious,
+              ),
+
+              // Play/Pause (To nhất)
               Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: Colors.purpleAccent, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.purple.withOpacity(0.4), blurRadius: 10, spreadRadius: 2)]),
                 child: IconButton(
-                  icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                  color: Colors.purple.shade800,
-                  iconSize: 40,
+                  iconSize: 64,
+                  icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
                   onPressed: onPlayPause,
                 ),
               ),
-              IconButton(icon: Icon(Icons.skip_next), color: Colors.white, iconSize: 40, onPressed: onNext),
-              // Icon thay đổi khi bật lặp lại
+
+              // Next
               IconButton(
-                  icon: Icon(isRepeat ? Icons.repeat_one : Icons.repeat),
-                  color: isRepeat ? Colors.greenAccent : Colors.white70,
-                  iconSize: 28,
-                  onPressed: onRepeat
+                icon: Icon(Icons.skip_next, size: 36),
+                color: theme.textPrimary,
+                onPressed: onNext,
+              ),
+
+              // Nút Repeat (Đổi màu khi bật)
+              IconButton(
+                icon: Icon(isRepeat ? Icons.repeat_one : Icons.repeat, size: 28),
+                color: isRepeat ? Colors.purpleAccent : theme.iconColor,
+                onPressed: onRepeat,
               ),
             ],
           ),
+          SizedBox(height: 20),
         ],
       ),
     );

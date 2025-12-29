@@ -1,7 +1,7 @@
 // lib/widgets/mini_player.dart
 import 'package:flutter/material.dart';
 import '../models/song.dart';
-import '../services/favorites_manager.dart'; // Import để lưu yêu thích
+import '../services/favorites_manager.dart';
 
 class MiniPlayer extends StatefulWidget {
   final Song song;
@@ -26,7 +26,6 @@ class MiniPlayer extends StatefulWidget {
 class _MiniPlayerState extends State<MiniPlayer> {
   @override
   Widget build(BuildContext context) {
-    // Kiểm tra xem bài hát này đã thích chưa
     bool isFav = FavoritesManager.isFavorite(widget.song);
 
     return GestureDetector(
@@ -42,13 +41,30 @@ class _MiniPlayerState extends State<MiniPlayer> {
         ),
         child: Row(
           children: [
+            // --- SỬA PHẦN ẢNH BÌA ---
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(widget.song.coverUrl, width: 48, height: 48, fit: BoxFit.cover),
+                child: Image.network(
+                  widget.song.coverUrl,
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                  // Thêm đoạn này để bắt lỗi ảnh
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 48,
+                      height: 48,
+                      color: Colors.grey[800],
+                      child: Icon(Icons.music_note, color: Colors.white54),
+                    );
+                  },
+                ),
               ),
             ),
+            // ------------------------
+
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -67,20 +83,13 @@ class _MiniPlayerState extends State<MiniPlayer> {
                 ],
               ),
             ),
-
-            // --- NÚT TIM (ĐÃ SỬA) ---
             IconButton(
-              icon: Icon(
-                isFav ? Icons.favorite : Icons.favorite_border,
-                color: isFav ? Colors.redAccent : Colors.white,
-              ),
+              icon: Icon(isFav ? Icons.favorite : Icons.favorite_border, color: isFav ? Colors.redAccent : Colors.white),
               onPressed: () async {
                 await FavoritesManager.toggleFavorite(widget.song);
-                setState(() {}); // Cập nhật lại icon ngay lập tức
+                setState(() {});
               },
             ),
-            // ------------------------
-
             IconButton(
               icon: Icon(widget.isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
               onPressed: widget.onPlayPause,

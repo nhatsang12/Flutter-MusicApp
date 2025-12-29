@@ -25,6 +25,33 @@ class MusicApiService {
     }
   }
 
+  // --- HÀM MỚI QUAN TRỌNG: LẤY THÔNG TIN BÀI HÁT TỪ ID ---
+  // Hàm này giúp lấy lại link nhạc mới khi link cũ trong playlist bị hết hạn
+  static Future<Song?> fetchSongById(String songId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.deezer.com/track/$songId'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        // Kiểm tra xem API có trả về lỗi không (ví dụ ID sai hoặc bài bị xóa)
+        if (data['error'] != null) {
+          print("Deezer API Error: ${data['error']}");
+          return null;
+        }
+
+        // Trả về đối tượng Song với link nhạc (preview) mới nhất
+        return Song.fromDeezer(data);
+      }
+    } catch (e) {
+      print('Error fetching song detail: $e');
+    }
+    return null;
+  }
+  // -------------------------------------------------------
+
   // Sample songs as fallback
   static List<Song> getSampleSongs() {
     return [
@@ -71,7 +98,7 @@ class MusicApiService {
     ];
   }
 
-  // Search songs (placeholder for future implementation)
+  // Search songs
   static Future<List<Song>> searchSongs(String query) async {
     try {
       final response = await http.get(
@@ -92,7 +119,7 @@ class MusicApiService {
     }
   }
 
-  // Get top tracks by genre (for future features)
+  // Get top tracks by genre
   static Future<List<Song>> getTopTracksByGenre(int genreId, {int limit = 20}) async {
     try {
       final response = await http.get(

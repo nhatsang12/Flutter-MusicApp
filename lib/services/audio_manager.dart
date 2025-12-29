@@ -6,45 +6,68 @@ import '../models/song.dart';
 import 'auth_service.dart';
 
 class AudioManager {
-  // Singleton: Giúp truy cập AudioManager ở bất cứ đâu trong app
   static final AudioManager _instance = AudioManager._internal();
   factory AudioManager() => _instance;
 
   final AudioPlayer _audioPlayer = AudioPlayer();
-  final StreamController<void> uiStream = StreamController.broadcast(); // Đường dây nóng cập nhật UI
+  final StreamController<void> uiStream = StreamController.broadcast();
 
-  List<Song> playlist = []; // Danh sách bài hát đang chờ phát
+  List<Song> playlist = [];
   Song? currentSong;
   bool isPlaying = false;
   Duration duration = Duration.zero;
   Duration position = Duration.zero;
   bool isShuffle = false;
-  bool isRepeat = false;
+  bool isRepeat = false; // Biến trạng thái lặp lại
 
   AudioManager._internal() {
-    // Lắng nghe sự kiện từ AudioPlayer
-    _audioPlayer.onPlayerComplete.listen((event) => next());
+    // --- SỬA LOGIC LẶP LẠI Ở ĐÂY ---
+    _audioPlayer.onPlayerComplete.listen((event) {
+      if (currentSong == null) return;
+
+      if (isRepeat) {
+        // Cách fix: Thay vì seek(0) -> resume, ta gọi play() lại từ đầu
+        // Điều này đảm bảo nhạc chạy lại ổn định hơn
+        play(currentSong!, null);
+      } else {
+        next();
+      }
+    });
+    // -------------------------------
+
     _audioPlayer.onDurationChanged.listen((d) { duration = d; _notify(); });
     _audioPlayer.onPositionChanged.listen((p) { position = p; _notify(); });
-    _audioPlayer.onPlayerStateChanged.listen((s) { isPlaying = s == PlayerState.playing; _notify(); });
+    _audioPlayer.onPlayerStateChanged.listen((s) {
+      isPlaying = s == PlayerState.playing;
+      _notify();
+    });
   }
 
   void _notify() {
     if (!uiStream.isClosed) uiStream.add(null);
   }
 
-  // Hàm phát nhạc chính
-  Future<void> play(Song song, List<Song> newPlaylist) async {
-    playlist = newPlaylist;
-    currentSong = song;
+  Future<void> play(Song song, List<Song>? newPlaylist) async {
+    if (newPlaylist != null && newPlaylist.isNotEmpty) {
+      playlist = List.from(newPlaylist);
+    }
 
-    // Lưu thống kê
+    if (song.url.isEmpty) {
+      print("❌ Link nhạc rỗng");
+      return;
+    }
+
+    currentSong = song;
     AuthService.addListeningStats(position.inSeconds);
 
-    await _audioPlayer.stop();
-    await _audioPlayer.play(UrlSource(song.url));
-    isPlaying = true;
-    _notify();
+    try {
+      await _audioPlayer.stop();
+      await _audioPlayer.play(UrlSource(song.url));
+      isPlaying = true;
+      _notify();
+    } catch (e) {
+      print("❌ Lỗi Play: $e");
+    }
   }
 
   Future<void> togglePlayPause() async {
@@ -64,24 +87,32 @@ class AudioManager {
     if (isShuffle) {
       nextIndex = Random().nextInt(playlist.length);
     } else {
+      // Logic lặp danh sách (khi hết bài cuối thì quay về bài đầu)
       nextIndex = (currentIndex + 1) % playlist.length;
     }
-    play(playlist[nextIndex], playlist);
+    play(playlist[nextIndex], null);
   }
 
   void previous() {
     if (playlist.isEmpty || currentSong == null) return;
     int currentIndex = playlist.indexWhere((s) => s.id == currentSong!.id);
     int prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-    play(playlist[prevIndex], playlist);
+    play(playlist[prevIndex], null);
   }
 
   void seek(Duration pos) {
     _audioPlayer.seek(pos);
   }
 
-  void toggleShuffle() { isShuffle = !isShuffle; _notify(); }
-  void toggleRepeat() { isRepeat = !isRepeat; _notify(); }
+  void toggleShuffle() {
+    isShuffle = !isShuffle;
+    _notify(); // Cập nhật giao diện để đổi màu nút Shuffle
+  }
+
+  void toggleRepeat() {
+    isRepeat = !isRepeat;
+    _notify(); // Cập nhật giao diện để đổi màu nút Repeat
+  }
 
   void dispose() {
     _audioPlayer.dispose();
