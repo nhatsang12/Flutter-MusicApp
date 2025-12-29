@@ -23,7 +23,19 @@ class AudioManager {
 
   AudioManager._internal() {
     // Lắng nghe sự kiện từ AudioPlayer
-    _audioPlayer.onPlayerComplete.listen((event) => next());
+    _audioPlayer.onPlayerComplete.listen((event) {
+      if (currentSong == null) return;
+
+      // --- FIX LỖI LOOP ---
+      if (isRepeat) {
+        // Nếu đang bật lặp lại, phát lại bài hiện tại
+        play(currentSong!, null);
+      } else {
+        // Nếu không, chuyển bài tiếp theo
+        next();
+      }
+    });
+
     _audioPlayer.onDurationChanged.listen((d) { duration = d; _notify(); });
     _audioPlayer.onPositionChanged.listen((p) { position = p; _notify(); });
     _audioPlayer.onPlayerStateChanged.listen((s) { isPlaying = s == PlayerState.playing; _notify(); });
@@ -33,18 +45,36 @@ class AudioManager {
     if (!uiStream.isClosed) uiStream.add(null);
   }
 
-  // Hàm phát nhạc chính
-  Future<void> play(Song song, List<Song> newPlaylist) async {
-    playlist = newPlaylist;
+  // Hàm phát nhạc chính (Đã cập nhật để hỗ trợ Offline)
+  Future<void> play(Song song, List<Song>? newPlaylist) async {
+    // 1. Cập nhật danh sách phát nếu có
+    if (newPlaylist != null && newPlaylist.isNotEmpty) {
+      playlist = List.from(newPlaylist);
+    }
+
     currentSong = song;
 
     // Lưu thống kê
     AuthService.addListeningStats(position.inSeconds);
 
-    await _audioPlayer.stop();
-    await _audioPlayer.play(UrlSource(song.url));
-    isPlaying = true;
-    _notify();
+    try {
+      await _audioPlayer.stop();
+
+      // --- LOGIC QUAN TRỌNG: PHÂN BIỆT ONLINE / OFFLINE ---
+      if (song.url.startsWith('http') || song.url.startsWith('https')) {
+        // Nếu là link mạng -> Dùng UrlSource
+        await _audioPlayer.play(UrlSource(song.url));
+      } else {
+        // Nếu là đường dẫn file trong máy -> Dùng DeviceFileSource
+        await _audioPlayer.play(DeviceFileSource(song.url));
+      }
+      // ----------------------------------------------------
+
+      isPlaying = true;
+      _notify();
+    } catch (e) {
+      print("Lỗi phát nhạc: $e");
+    }
   }
 
   Future<void> togglePlayPause() async {
@@ -66,14 +96,14 @@ class AudioManager {
     } else {
       nextIndex = (currentIndex + 1) % playlist.length;
     }
-    play(playlist[nextIndex], playlist);
+    play(playlist[nextIndex], null); // Truyền null để giữ nguyên playlist hiện tại
   }
 
   void previous() {
     if (playlist.isEmpty || currentSong == null) return;
     int currentIndex = playlist.indexWhere((s) => s.id == currentSong!.id);
     int prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-    play(playlist[prevIndex], playlist);
+    play(playlist[prevIndex], null);
   }
 
   void seek(Duration pos) {
