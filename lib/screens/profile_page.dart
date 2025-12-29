@@ -8,7 +8,8 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/language_provider.dart';
-import '../services/theme_provider.dart'; // <--- IMPORT THEME
+import '../services/theme_provider.dart';
+import 'downloaded_page.dart'; // Đã có import này
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -23,7 +24,6 @@ class _ProfilePageState extends State<ProfilePage> {
   int _totalListenTime = 0;
   int _songsPlayed = 0;
   bool _isNotificationEnabled = true;
-  // ĐÃ XÓA biến _isDarkModeEnabled ở đây vì ta sẽ dùng từ Provider
 
   final ImagePicker _picker = ImagePicker();
 
@@ -54,7 +54,6 @@ class _ProfilePageState extends State<ProfilePage> {
           _userName,
           avatarUrl: image.path,
         );
-
         _showCustomSnackBar('Đã cập nhật ảnh đại diện!', isSuccess: true);
       }
     } catch (e) {
@@ -103,7 +102,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _showBeautifulDialog({required String title, required IconData icon, required Widget content, required String confirmText, required VoidCallback onConfirm}) {
-    final theme = Provider.of<ThemeProvider>(context, listen: false); // Lấy theme để chỉnh màu dialog
+    final theme = Provider.of<ThemeProvider>(context, listen: false);
 
     return showGeneralDialog(
       context: context,
@@ -118,7 +117,7 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Opacity(
             opacity: anim1.value,
             child: AlertDialog(
-              backgroundColor: theme.cardColor, // Nền dialog đổi màu theo theme
+              backgroundColor: theme.cardColor,
               elevation: 20,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1)),
               titlePadding: EdgeInsets.zero,
@@ -140,7 +139,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildModernTextField({required TextEditingController controller, required String label, required IconData icon, bool isPassword = false}) {
-    final theme = Provider.of<ThemeProvider>(context); // Lấy theme để chỉnh màu input
+    final theme = Provider.of<ThemeProvider>(context);
     bool _obscure = isPassword;
     return StatefulBuilder(
       builder: (context, setState) {
@@ -168,11 +167,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showEditProfileDialog() {
     final nameController = TextEditingController(text: _userName);
     final emailController = TextEditingController(text: _userEmail);
-    _showBeautifulDialog(title: 'Cập nhật hồ sơ', icon: Icons.edit_note_rounded, confirmText: 'Lưu thay đổi', content: Column(mainAxisSize: MainAxisSize.min, children: [SizedBox(height: 10), _buildModernTextField(controller: nameController, label: 'Tên hiển thị', icon: Icons.person_outline), _buildModernTextField(controller: emailController, label: 'Địa chỉ Email', icon: Icons.alternate_email)]), onConfirm: () { setState(() { _userName = nameController.text; _userEmail = emailController.text; }); AuthService.updateProfile(
-      nameController.text,
-      avatarUrl: _avatarPath,
-    );
-    ; Navigator.pop(context); _showCustomSnackBar('Hồ sơ đã được cập nhật thành công!', isSuccess: true); });
+    _showBeautifulDialog(title: 'Cập nhật hồ sơ', icon: Icons.edit_note_rounded, confirmText: 'Lưu thay đổi', content: Column(mainAxisSize: MainAxisSize.min, children: [SizedBox(height: 10), _buildModernTextField(controller: nameController, label: 'Tên hiển thị', icon: Icons.person_outline), _buildModernTextField(controller: emailController, label: 'Địa chỉ Email', icon: Icons.alternate_email)]), onConfirm: () { setState(() { _userName = nameController.text; _userEmail = emailController.text; }); AuthService.updateProfile(nameController.text, avatarUrl: _avatarPath); Navigator.pop(context); _showCustomSnackBar('Hồ sơ đã được cập nhật thành công!', isSuccess: true); });
   }
 
   void _showChangePasswordDialog() {
@@ -195,14 +190,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    // --- KẾT NỐI PROVIDER ---
     final lang = Provider.of<LanguageProvider>(context);
-    final theme = Provider.of<ThemeProvider>(context); // Lấy theme
-    // -----------------------
+    final theme = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
       body: Container(
-        // Đổi màu nền theo theme
         decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: theme.backgroundColors)),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -230,7 +222,6 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         Center(child: Stack(children: [Container(padding: EdgeInsets.all(4), decoration: BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [Colors.purple.shade400, Colors.pink.shade400])), child: CircleAvatar(radius: 60, backgroundColor: Color(0xFF1E1E1E), backgroundImage: _avatarPath != null ? (_avatarPath!.startsWith('http') ? NetworkImage(_avatarPath!) : FileImage(File(_avatarPath!)) as ImageProvider) : null, child: _avatarPath == null ? Text(_userName.isNotEmpty ? _userName[0].toUpperCase() : 'M', style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white)) : null)), Positioned(bottom: 0, right: 0, child: GestureDetector(onTap: _pickImage, child: Container(padding: EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))]), child: Icon(Icons.camera_alt, color: Colors.purple.shade700, size: 20))))])),
         SizedBox(height: 16),
-        // Đổi màu chữ theo theme
         Text(_userName, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: theme.textPrimary, letterSpacing: 0.5)),
         SizedBox(height: 4),
         Text(_userEmail, style: TextStyle(fontSize: 15, color: theme.textSecondary)),
@@ -280,25 +271,36 @@ class _ProfilePageState extends State<ProfilePage> {
           SizedBox(height: 12),
           _buildMenuItem(icon: Icons.person_outline, title: lang.getText('personal_info'), subtitle: 'Cập nhật tên, email', onTap: _showEditProfileDialog, theme: theme),
           _buildMenuItem(icon: Icons.lock_outline, title: lang.getText('change_pass'), subtitle: 'Thay đổi mật khẩu bảo mật', onTap: _showChangePasswordDialog, theme: theme),
+
           _buildMenuItem(icon: Icons.notifications_none, title: lang.getText('notifications'), subtitle: 'Quản lý thông báo', theme: theme, trailing: Switch(value: _isNotificationEnabled, onChanged: (value) { setState(() => _isNotificationEnabled = value); _showCustomSnackBar(value ? 'Đã bật thông báo' : 'Đã tắt thông báo', isSuccess: true); }, activeColor: Colors.purple.shade400)),
+
+          // --- MỚI: NÚT ĐÃ TẢI ---
+          _buildMenuItem(
+              icon: Icons.download_done,
+              title: "Đã tải",
+              subtitle: "Nghe nhạc offline",
+              theme: theme,
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => DownloadedPage()));
+              }
+          ),
+          // -----------------------
+
           _buildMenuItem(icon: Icons.language, title: lang.getText('language'), subtitle: lang.currentLocale.languageCode == 'vi' ? 'Tiếng Việt' : 'English', onTap: _showLanguageDialog, theme: theme),
 
-          // --- SỬA LOGIC NÚT GIAO DIỆN TỐI ---
           _buildMenuItem(
               icon: Icons.dark_mode,
               title: lang.getText('dark_mode'),
               subtitle: theme.isDarkMode ? lang.getText('on') : lang.getText('off'),
               theme: theme,
               trailing: Switch(
-                  value: theme.isDarkMode, // Lấy giá trị từ Provider
+                  value: theme.isDarkMode,
                   onChanged: (value) {
-                    // Gọi hàm toggleTheme của Provider để đổi màu toàn app
                     theme.toggleTheme(value);
                   },
                   activeColor: Colors.purple.shade400
               )
           ),
-          // ----------------------------------
 
           SizedBox(height: 20),
           Text(lang.getText('others'), style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.textSecondary, letterSpacing: 1.2)),

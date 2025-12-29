@@ -21,19 +21,21 @@ class AudioManager {
   bool isRepeat = false; // Biến trạng thái lặp lại
 
   AudioManager._internal() {
-    // --- SỬA LOGIC LẶP LẠI Ở ĐÂY ---
+
+    // Lắng nghe sự kiện từ AudioPlayer
     _audioPlayer.onPlayerComplete.listen((event) {
       if (currentSong == null) return;
 
+      // --- FIX LỖI LOOP ---
       if (isRepeat) {
-        // Cách fix: Thay vì seek(0) -> resume, ta gọi play() lại từ đầu
-        // Điều này đảm bảo nhạc chạy lại ổn định hơn
+        // Nếu đang bật lặp lại, phát lại bài hiện tại
         play(currentSong!, null);
       } else {
+        // Nếu không, chuyển bài tiếp theo
         next();
       }
     });
-    // -------------------------------
+
 
     _audioPlayer.onDurationChanged.listen((d) { duration = d; _notify(); });
     _audioPlayer.onPositionChanged.listen((p) { position = p; _notify(); });
@@ -47,10 +49,15 @@ class AudioManager {
     if (!uiStream.isClosed) uiStream.add(null);
   }
 
+
+  // Hàm phát nhạc chính (Đã cập nhật để hỗ trợ Offline)
   Future<void> play(Song song, List<Song>? newPlaylist) async {
+    // 1. Cập nhật danh sách phát nếu có
     if (newPlaylist != null && newPlaylist.isNotEmpty) {
       playlist = List.from(newPlaylist);
     }
+
+    currentSong = song;
 
     if (song.url.isEmpty) {
       print("❌ Link nhạc rỗng");
@@ -62,11 +69,23 @@ class AudioManager {
 
     try {
       await _audioPlayer.stop();
-      await _audioPlayer.play(UrlSource(song.url));
+
+
+      // --- LOGIC QUAN TRỌNG: PHÂN BIỆT ONLINE / OFFLINE ---
+      if (song.url.startsWith('http') || song.url.startsWith('https')) {
+        // Nếu là link mạng -> Dùng UrlSource
+        await _audioPlayer.play(UrlSource(song.url));
+      } else {
+        // Nếu là đường dẫn file trong máy -> Dùng DeviceFileSource
+        await _audioPlayer.play(DeviceFileSource(song.url));
+      }
+      // ----------------------------------------------------
+
       isPlaying = true;
       _notify();
     } catch (e) {
-      print("❌ Lỗi Play: $e");
+      print("Lỗi phát nhạc: $e");
+
     }
   }
 
@@ -90,7 +109,9 @@ class AudioManager {
       // Logic lặp danh sách (khi hết bài cuối thì quay về bài đầu)
       nextIndex = (currentIndex + 1) % playlist.length;
     }
+
     play(playlist[nextIndex], null);
+
   }
 
   void previous() {
