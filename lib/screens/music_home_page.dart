@@ -40,33 +40,33 @@ class _MusicHomePageState extends State<MusicHomePage> {
   void initState() {
     super.initState();
     _loadSongsFromDeezer();
-<<<<<<< HEAD
+
 
     FavoritesManager.loadFromServer();
 
   }
 
-  void _setupAudioPlayer() {
-    _audioPlayer.onDurationChanged.listen((duration) {
-      setState(() => _duration = duration);
-    });
-
-    _audioPlayer.onPositionChanged.listen((position) {
-      setState(() => _position = position);
-    });
-
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      setState(() => _isPlaying = state == PlayerState.playing);
-    });
-
-    _audioPlayer.onPlayerComplete.listen((event) {
-      _onSongComplete();
-    });
-=======
-    FavoritesManager.loadFavorites();
-    PlaylistManager.loadPlaylists();
->>>>>>> Profile
-  }
+  // void _setupAudioPlayer() {
+  //   _audioPlayer.onDurationChanged.listen((duration) {
+  //     setState(() => _duration = duration);
+  //   });
+  //
+  //   _audioPlayer.onPositionChanged.listen((position) {
+  //     setState(() => _position = position);
+  //   });
+  //
+  //   _audioPlayer.onPlayerStateChanged.listen((state) {
+  //     setState(() => _isPlaying = state == PlayerState.playing);
+  //   });
+  //
+  //   _audioPlayer.onPlayerComplete.listen((event) {
+  //     _onSongComplete();
+  //   });
+  //
+  //   FavoritesManager.loadFavorites();
+  //   PlaylistManager.loadPlaylists();
+  //
+  // }
 
   Future<void> _loadSongsFromDeezer() async {
     setState(() => _isLoading = true);

@@ -7,6 +7,7 @@ import '../models/user.dart';
 
 class AuthService {
   static const String _userKey = 'current_user';
+  static const String _usersKey = 'users';
   static User? _currentUser;
 
   // Server base URL
@@ -103,9 +104,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_userKey, jsonEncode(_currentUser!.toJson()));
   }
-<<<<<<< HEAD
-}
-=======
+
 
   // Thêm vào lib/services/auth_service.dart
 
@@ -174,4 +173,4 @@ class AuthService {
     return true; // Thành công
   }
 }
->>>>>>> Profile
+

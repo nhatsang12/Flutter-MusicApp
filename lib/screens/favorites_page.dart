@@ -37,7 +37,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
   }
 
   void _removeFavorite(Song song) async {
-<<<<<<< HEAD
+
     final success = await FavoritesManager.removeFavorite(song);
 
     if (success) {
@@ -56,7 +56,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         ),
       );
     }
-=======
+
     // Lấy ngôn ngữ để hiển thị thông báo
     final lang = Provider.of<LanguageProvider>(context, listen: false);
 
@@ -70,7 +70,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         duration: Duration(seconds: 2),
       ),
     );
->>>>>>> Profile
+
   }
 
 

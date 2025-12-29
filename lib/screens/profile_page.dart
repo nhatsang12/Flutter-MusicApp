@@ -50,7 +50,11 @@ class _ProfilePageState extends State<ProfilePage> {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
         setState(() { _avatarPath = image.path; });
-        await AuthService.updateProfile(_userName, image.path);
+        await AuthService.updateProfile(
+          _userName,
+          avatarUrl: image.path,
+        );
+
         _showCustomSnackBar('Đã cập nhật ảnh đại diện!', isSuccess: true);
       }
     } catch (e) {
@@ -164,7 +168,11 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showEditProfileDialog() {
     final nameController = TextEditingController(text: _userName);
     final emailController = TextEditingController(text: _userEmail);
-    _showBeautifulDialog(title: 'Cập nhật hồ sơ', icon: Icons.edit_note_rounded, confirmText: 'Lưu thay đổi', content: Column(mainAxisSize: MainAxisSize.min, children: [SizedBox(height: 10), _buildModernTextField(controller: nameController, label: 'Tên hiển thị', icon: Icons.person_outline), _buildModernTextField(controller: emailController, label: 'Địa chỉ Email', icon: Icons.alternate_email)]), onConfirm: () { setState(() { _userName = nameController.text; _userEmail = emailController.text; }); AuthService.updateProfile(nameController.text, _avatarPath); Navigator.pop(context); _showCustomSnackBar('Hồ sơ đã được cập nhật thành công!', isSuccess: true); });
+    _showBeautifulDialog(title: 'Cập nhật hồ sơ', icon: Icons.edit_note_rounded, confirmText: 'Lưu thay đổi', content: Column(mainAxisSize: MainAxisSize.min, children: [SizedBox(height: 10), _buildModernTextField(controller: nameController, label: 'Tên hiển thị', icon: Icons.person_outline), _buildModernTextField(controller: emailController, label: 'Địa chỉ Email', icon: Icons.alternate_email)]), onConfirm: () { setState(() { _userName = nameController.text; _userEmail = emailController.text; }); AuthService.updateProfile(
+      nameController.text,
+      avatarUrl: _avatarPath,
+    );
+    ; Navigator.pop(context); _showCustomSnackBar('Hồ sơ đã được cập nhật thành công!', isSuccess: true); });
   }
 
   void _showChangePasswordDialog() {

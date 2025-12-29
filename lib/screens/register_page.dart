@@ -65,11 +65,11 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
             children: [
               Icon(Icons.error_outline, color: Colors.white),
               SizedBox(width: 12),
-<<<<<<< HEAD
+
               Expanded(child: Text('Email đã được sử dụng hoặc có lỗi server')),
-=======
+
               Expanded(child: Text(lang.getText('email_taken'))), // "Email đã được sử dụng"
->>>>>>> Profile
+
             ],
           ),
           backgroundColor: Colors.red.shade700,
