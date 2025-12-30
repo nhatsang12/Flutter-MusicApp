@@ -188,17 +188,23 @@ class _MusicHomePageState extends State<MusicHomePage> {
             ),
             ListTile(
               leading: Icon(Icons.playlist_add, color: Colors.blueAccent),
-              title: Text(lang.getText('add_to_playlist'), style: TextStyle(color: theme.textPrimary)), // Chữ đổi màu
-              onTap: () {
+              title: Text(lang.getText('add_to_playlist'), style: TextStyle(color: theme.textPrimary)),
+              onTap: () async {
                 Navigator.pop(context);
-                showModalBottomSheet(
+                final playlistName = await showDialog<String>(
                   context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (ctx) => Container(height: 400, child: AddPlaylistSheet(song: song)),
+                  builder: (ctx) => AddPlaylistSheet(song: song),
                 );
+                if (playlistName != null && playlistName.isNotEmpty) {
+                  // Tạo playlist LOCAL + SERVER
+                  await PlaylistManager.createPlaylist(playlistName);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(lang.getText('playlist_created')))
+                  );
+                }
               },
             ),
+
             ListTile(
               leading: Icon(Icons.download, color: Colors.greenAccent),
               title: Text(lang.getText('download'), style: TextStyle(color: theme.textPrimary)), // Chữ đổi màu

@@ -10,6 +10,11 @@ class AuthService {
   static const String _usersKey = 'users';
   static User? _currentUser;
 
+  // lib/services/auth_service.dart
+
+  static String? get currentUserId => _currentUser?.id;
+
+
   // Server base URL
   static const String baseUrl = "http://10.0.2.2:3000/api/auth";
   // Nếu chạy iOS Simulator hoặc Web, đổi localhost tương ứng
